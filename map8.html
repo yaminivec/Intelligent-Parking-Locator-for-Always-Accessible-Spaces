@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking - Tamil Nadu</title>
+    
+    <!-- Leaflet.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            display: flex;
+            justify-content: center;
+            background-color: navy;
+            padding: 10px;
+        }
+
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            gap: 180px;
+        }
+
+        .navbar ul li {
+            display: inline;
+        }
+
+        .navbar ul li a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 10px 15px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        .navbar ul li a:hover {
+            background-color: lightblue;
+        }
+
+        /* Full-screen map */
+        #map {
+            width: 100%;
+            height: 90vh;
+        }
+
+        /* Short Note */
+        #note {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <ul>
+            <li><a href="#home">Home</a></li>   
+            <li><a href="#parking">Parking</a></li>   
+            <li><a href="#traffic">Traffic</a></li>   
+            <li><a href="#logout">Logout</a></li>
+        </ul>
+    </nav>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Short Note -->
+    <div id="note">🅿️ <b>Note:</b> Blue markers represent <b>Parking Available</b> locations. 🚦 Red roads indicate <b>live traffic congestion</b>.</div>
+
+    <!-- Leaflet.js and Plugins -->
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+    <script>
+        // Initialize map, set to Tamil Nadu center
+        var map = L.map('map').setView([11.1271, 78.6569], 8);
+
+        // Load OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Move zoom control to bottom-right
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // Add search control
+        L.Control.geocoder({ defaultMarkGeocode: true }).addTo(map);
+
+        // Marker cluster group to handle large number of markers
+        var markers = L.markerClusterGroup();
+
+        // Fetch 10,000+ parking locations dynamically from OpenStreetMap Overpass API
+        async function fetchParkingLocations() {
+            let overpassQuery = `
+                [out:json][timeout:900];
+                (
+                    node["amenity"="parking"](8.0,76.5,14.5,80.5);  // Tamil Nadu Bounding Box
+                    way["amenity"="parking"](8.0,76.5,14.5,80.5);
+                    relation["amenity"="parking"](8.0,76.5,14.5,80.5);
+                );
+                out center;
+            `;
+
+            let url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`;
+
+            try {
+                let response = await fetch(url);
+                let data = await response.json();
+
+                let count = 0; // Track the number of locations added
+                data.elements.forEach(parking => {
+                    let lat = parking.lat || parking.center.lat;
+                    let lon = parking.lon || parking.center.lon;
+
+                    let marker = L.marker([lat, lon], { title: "Parking Available" })
+                        .bindPopup(`🅿️ <b>Parking Available</b><br>Latitude: ${lat}<br>Longitude: ${lon}`);
+
+                    markers.addLayer(marker);
+                    count++;
+                });
+
+                map.addLayer(markers);
+                console.log(`Total parking locations added: ${count}`);
+            } catch (error) {
+                console.error("Error fetching parking data:", error);
+            }
+        }
+
+        fetchParkingLocations(); // Call the function to fetch parking spots
+
+        // Add Google Traffic Layer (requires API key)
+        function initGoogleTraffic() {
+            let trafficLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m@221097413,traffic&x={x}&y={y}&z={z}&key=YOUR_GOOGLE_MAPS_API_KEY', {
+                attribution: '&copy; Google Maps'
+            });
+            map.addLayer(trafficLayer);
+        }
+
+        initGoogleTraffic(); // Call the function to enable traffic layer
+
+    </script>
+
+</body>
+</html>
+
